@@ -37,14 +37,12 @@ pipeline {
 			set -e
 
 			echo '===== PROJECT STRUCTURE ====='
-			find . -maxdepth 2 -name CMakeLists.txt
+			find . -name CMakeLists.txt
 
-			echo '===== BUILD START ====='
-
-			# 自动定位 CMakeLists.txt 所在目录
+			echo '===== FIND ROOT ====='
 			ROOT_DIR=$(dirname $(find . -name CMakeLists.txt | head -n 1))
 
-			echo 'ROOT:' $ROOT_DIR
+			echo 'ROOT_DIR:' $ROOT_DIR
 
 			cd $ROOT_DIR
 
