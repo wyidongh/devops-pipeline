@@ -46,14 +46,13 @@ pipeline {
 		set -e
 
 		docker run --rm \
-		  -v $WORKSPACE/service:/workspace \
+		  -v $WORKSPACE/service:/workspace/service \
 		  -v $WORKSPACE/build:/build \
-		  -w /workspace \
-		  cpp-ci:build-1.0 \
-		  bash -c "
+		  -w /workspace/service \
+		  cpp-ci:build-1.0 bash -c "
 		    set -e
 		    ls -al
-		    cmake -S cpp-demo-service -B /build
+		    cmake -S . -B /build
 		    cmake --build /build -j
 		  "
 		'''
