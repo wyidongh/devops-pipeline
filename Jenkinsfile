@@ -47,28 +47,31 @@ pipeline {
             }
         }
 
-        stage('Build (Dockerized)') {
-            steps {
-                sh '''
-                set -e
+	stage('Build (Dockerized)') {
+	    steps {
+		sh '''
+		set -e
 
-                echo "PROJECT_ROOT=$PROJECT_ROOT"
+		echo "Building in Docker..."
 
-                docker run --rm \
-                    -v $SERVICE_DIR:/workspace \
-                    -v $BUILD_DIR:/build \
-                    -w /workspace \
-                    cpp-ci:build-1.0 \
-                    bash -c "
-                        set -e
-                        echo 'BUILD START'
+		docker run --rm \
+		    -v $SERVICE_DIR:/workspace \
+		    -v $BUILD_DIR:/build \
+		    -w /workspace \
+		    cpp-ci:build-1.0 \
+		    bash -c "
+			set -e
 
-                        cmake -S ${PROJECT_ROOT#/workspace/} -B /build
-                        cmake --build /build -j
-                    "
-                '''
-            }
-        }
+			echo 'BUILD START'
+
+			ls -al
+
+			cmake -S . -B /build
+			cmake --build /build -j
+		    "
+		'''
+	    }
+	}
 
         stage('Test') {
             steps {
