@@ -56,7 +56,7 @@ pipeline {
 		    bash -c "
 			set -e
 			ls -al service
-			cmake -S service -B /build
+			cmake -S service/cpp-demo-service -B /build
 			cmake --build /build -j
 		    "
 		'''
