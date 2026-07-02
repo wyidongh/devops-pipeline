@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_DIR = "/workspace/cpp-demo-service"
+        SERVICE_DIR = "/home/dong/devops/workspace/cpp-demo-service"
     }
 
     stages {
@@ -45,6 +45,8 @@ pipeline {
                       -v ${SERVICE_DIR}:/workspace \
                       cpp-ci:build-1.0 \
                       bash -c "
+			cd /workspace &&
+           		rm -rf build &&
                         mkdir build &&
                         cd build &&
                         cmake .. &&
@@ -60,7 +62,10 @@ pipeline {
                     docker run --rm \
                       -v ${SERVICE_DIR}:/workspace \
                       cpp-ci:build-1.0 \
-                      bash -c "./build/app"
+                      bash -c "
+			cd /workspace &&
+			./build/app
+		      "
                 '''
             }
         }
