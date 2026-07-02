@@ -49,14 +49,14 @@ pipeline {
 		echo "BUILD START"
 
 		docker run --rm \
-		    -v $WORKSPACE/service:/workspace \
+		    -v $WORKSPACE/service:/workspace/service \
  		    -v $WORKSPACE/build:/build \
   		    -w /workspace \
 		    cpp-ci:build-1.0 \
 		    bash -c "
 			set -e
-			ls -al
-			cmake -S . -B /build
+			ls -al service
+			cmake -S service -B /build
 			cmake --build /build -j
 		    "
 		'''
