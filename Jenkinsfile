@@ -12,21 +12,6 @@ pipeline {
 	    }
 	}
 
-#	stage('Build') {
-#	    steps {
-#		sh '''
-#		docker run --rm \
-#		  -v $WORKSPACE/service:/workspace \
-#		  cpp-ci:build-1.0 \
-#		  bash -c "
-#		    mkdir -p build &&
-#		    cd build &&
-#		    cmake .. &&
-#		    make
-#		  "
-#		'''
-#	    }
-#	}
 
 	stage('Debug Workspace') {
 	    steps {
