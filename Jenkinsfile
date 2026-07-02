@@ -25,7 +25,7 @@ pipeline {
 		set -e
 		rm -rf service build
 
-		git clone https://github.com/wyidongh/cpp-demo-service.git .
+		git clone https://github.com/wyidongh/cpp-demo-service.git service
 		ls -al service
 		'''
 	    }
