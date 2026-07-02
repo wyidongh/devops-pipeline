@@ -52,7 +52,8 @@ pipeline {
 		  cpp-ci:build-1.0 \
 		  bash -c "
 		    set -e
-		    cmake -S . -B /build
+		    ls -al
+		    cmake -S cpp-demo-service -B /build
 		    cmake --build /build -j
 		  "
 		'''
