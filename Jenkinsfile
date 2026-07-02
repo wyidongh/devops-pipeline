@@ -27,6 +27,7 @@ pipeline {
 
 		git clone https://github.com/wyidongh/cpp-demo-service.git service
 		ls -al service
+		cd service/cpp-demo-service
 		'''
 	    }
 	}
@@ -40,23 +41,22 @@ pipeline {
             }
         }
 
-
 	stage('Build') {
 	    steps {
 		sh '''
-		    set -e
+		set -e
 
-		    docker run --rm \
-		      -v $WORKSPACE/service:/workspace \
-		      -v $WORKSPACE/build:/build \
-		      -w /workspace \
-		      cpp-ci:build-1.0 \
-		      bash -c "
-			set -e
-			ls -al
-			cmake -S . -B /build
-			cmake --build /build -j
-		      "
+		docker run --rm \
+		  -v $WORKSPACE/service/cpp-demo-service:/workspace \
+		  -v $WORKSPACE/build:/build \
+		  -w /workspace \
+		  cpp-ci:build-1.0 \
+		  bash -c "
+		    set -e
+		    ls -al
+		    cmake -S . -B /build
+		    cmake --build /build -j
+		  "
 		'''
 	    }
 	}
