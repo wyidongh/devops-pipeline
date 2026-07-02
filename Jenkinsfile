@@ -47,12 +47,13 @@ pipeline {
             }
         }
 
+
 	stage('Build (Dockerized)') {
 	    steps {
 		sh '''
 		set -e
 
-		echo "Building in Docker..."
+		echo "BUILD START"
 
 		docker run --rm \
 		    -v $SERVICE_DIR:/workspace \
@@ -62,9 +63,9 @@ pipeline {
 		    bash -c "
 			set -e
 
-			echo 'BUILD START'
-
 			ls -al
+
+			cd cpp-demo-service
 
 			cmake -S . -B /build
 			cmake --build /build -j
