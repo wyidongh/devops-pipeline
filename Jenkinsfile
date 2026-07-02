@@ -3,34 +3,43 @@ pipeline {
 
     stages {
 
-        stage('Checkout Service Repo') {
-            steps {
-                git url: 'https://github.com/wyidongh/cpp-demo-service.git', branch: 'main'
-            }
-        }
+	stage('Checkout Service Repo') {
+	    steps {
+		dir('service') {
+		    git branch: 'main',
+			url: 'https://github.com/wyidongh/cpp-demo-service.git'
+		}
+	    }
+	}
 
-        stage('Build in Docker CI Image') {
-            steps {
-                sh '''
-                docker run --rm \
-                  -v $WORKSPACE:/workspace \
-                  cpp-ci:build-1.0 \
-                  bash -c "
-                    cd /workspace &&
-                    rm -rf build &&
-                    mkdir build &&
-                    cd build &&
-                    cmake .. &&
-                    make
-                  "
-                '''
-            }
-        }
+	stage('Build') {
+	    steps {
+		sh '''
+		docker run --rm \
+		  -v $WORKSPACE/service:/workspace \
+		  cpp-ci:build-1.0 \
+		  bash -c "
+		    mkdir -p build &&
+		    cd build &&
+		    cmake .. &&
+		    make
+		  "
+		'''
+	    }
+	}
+	
+	stage('Run App') {
+	    steps {
+		sh '''
+		docker run --rm \
+		  -v $WORKSPACE/service:/workspace \
+		  cpp-ci:build-1.0 \
+		  bash -c "
+		    ./build/app
+		  "
+		'''
+	    }
+	}
 
-        stage('Run App') {
-            steps {
-                sh './build/app'
-            }
-        }
     }
 }
