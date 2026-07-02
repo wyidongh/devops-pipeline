@@ -36,16 +36,14 @@ pipeline {
 
 		    docker run --rm \
 		      -v ${SERVICE_DIR}:/workspace \
-		      -w /workspace \
-		      -u 0 \
+		      -w /workspace/cpp-demo-service \
 		      cpp-ci:build-1.0 \
 		      bash -c "
 			set -e
 			rm -rf build
 			mkdir -p build
-			cd build
-			cmake ..
-			make
+		      	cmake -S . -B build
+			cmake --build build	
 		      "
 		'''
 	    }
