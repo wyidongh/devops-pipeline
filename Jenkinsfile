@@ -2,26 +2,26 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_DIR = "/home/dong/devops/workspace/cpp-demo-service"
+        WORKSPACE_DIR = "/home/dong/devops/workspace"
+        SERVICE_NAME = "cpp-demo-service"
+        SERVICE_PATH = "/home/dong/devops/workspace/cpp-demo-service"
     }
 
     stages {
 
-        stage('Prepare Workspace') {
+        stage('Prepare') {
             steps {
                 sh '''
-                    rm -rf ${SERVICE_DIR}
-                    mkdir -p /workspace
+                    rm -rf ${SERVICE_PATH}
+                    mkdir -p ${WORKSPACE_DIR}
                 '''
             }
         }
 
-        stage('Clone Service') {
+        stage('Clone') {
             steps {
                 sh '''
-                    git clone \
-                    https://github.com/wyidongh/cpp-demo-service.git \
-                    ${SERVICE_DIR}
+                    git clone https://github.com/wyidongh/cpp-demo-service.git ${SERVICE_PATH}
                 '''
             }
         }
@@ -29,27 +29,24 @@ pipeline {
         stage('Verify') {
             steps {
                 sh '''
-                    pwd
-
-                    ls -al /workspace
-
-                    ls -al ${SERVICE_DIR}
+                    ls -al ${SERVICE_PATH}
                 '''
             }
         }
 
-        stage('Build') {
+        stage('Build (Docker)') {
             steps {
                 sh '''
                     docker run --rm \
-                      -v ${SERVICE_DIR}:/workspace \
+                      -v ${SERVICE_PATH}:/src \
                       cpp-ci:build-1.0 \
                       bash -c "
-			cd /workspace &&
-           		rm -rf build &&
-                        mkdir build &&
-                        cd build &&
-                        cmake .. &&
+                        set -e
+                        cd /src
+                        rm -rf build
+                        mkdir build
+                        cd build
+                        cmake ..
                         make
                       "
                 '''
@@ -60,12 +57,11 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm \
-                      -v ${SERVICE_DIR}:/workspace \
+                      -v ${SERVICE_PATH}:/src \
                       cpp-ci:build-1.0 \
                       bash -c "
-			cd /workspace &&
-			./build/app
-		      "
+                        /src/build/app
+                      "
                 '''
             }
         }
