@@ -2,23 +2,19 @@ pipeline {
     agent any
 
     environment {
-        WORKSPACE_DIR = "/home/dong/devops/workspace"
-        SERVICE_NAME = "cpp-demo-service"
         SERVICE_PATH = "/home/dong/devops/workspace/cpp-demo-service"
+        IMAGE_NAME = "cpp-app:${BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Prepare') {
             steps {
-                sh '''
-                    rm -rf ${SERVICE_PATH}
-                    mkdir -p ${WORKSPACE_DIR}
-                '''
+                sh 'rm -rf ${SERVICE_PATH}'
             }
         }
 
-        stage('Clone') {
+        stage('Checkout') {
             steps {
                 sh '''
                     git clone https://github.com/wyidongh/cpp-demo-service.git ${SERVICE_PATH}
@@ -26,44 +22,63 @@ pipeline {
             }
         }
 
-        stage('Verify') {
+        stage('Build') {
             steps {
                 sh '''
-                    ls -al ${SERVICE_PATH}
-                '''
-            }
-        }
-
-        stage('Build (Docker)') {
-            steps {
-                sh '''
-                    docker run --rm \
-                      -v ${SERVICE_PATH}:/src \
-                      cpp-ci:build-1.0 \
-                      bash -c "
-                        set -e
+                    docker run --rm -v ${SERVICE_PATH}:/src cpp-ci:build-1.0 bash -c "
                         cd /src
                         rm -rf build
                         mkdir build
                         cd build
                         cmake ..
                         make
-                      "
+                    "
                 '''
             }
         }
 
-        stage('Run') {
+        stage('Test') {
             steps {
                 sh '''
-                    docker run --rm \
-                      -v ${SERVICE_PATH}:/src \
-                      cpp-ci:build-1.0 \
-                      bash -c "
-                        /src/build/app
-                      "
+                    docker run --rm -v ${SERVICE_PATH}:/src cpp-ci:build-1.0 bash -c "
+                        cd /src/build
+                        ctest --output-on-failure || true
+                    "
                 '''
             }
+        }
+
+        stage('Package Docker Image') {
+            steps {
+                sh '''
+                    cat > ${SERVICE_PATH}/Dockerfile <<EOF
+FROM ubuntu:22.04
+WORKDIR /app
+COPY build/app .
+CMD ["./app"]
+EOF
+
+                    docker build -t ${IMAGE_NAME} ${SERVICE_PATH}
+                '''
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh '''
+                    docker run --rm ${IMAGE_NAME}
+                '''
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "CI/CD SUCCESS 🎉"
+        }
+        failure {
+            echo "CI FAILED ❌"
         }
     }
 }
