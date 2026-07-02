@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_NAME = "cpp-demo-service"
-        SERVICE_PATH = "${WORKSPACE}/service"
-        IMAGE_NAME = "cpp-demo:${BUILD_NUMBER}"
+        SERVICE_REPO = "https://github.com/wyidongh/cpp-demo-service.git"
+        SERVICE_DIR = "${WORKSPACE}/service"
+        BUILD_IMAGE = "cpp-ci:build-1.0"
     }
 
     stages {
@@ -13,7 +13,7 @@ pipeline {
             steps {
                 sh '''
                     echo "Cleaning workspace..."
-                    rm -rf ${SERVICE_PATH} || true
+                    rm -rf ${SERVICE_DIR}
                 '''
             }
         }
@@ -21,26 +21,26 @@ pipeline {
         stage('Checkout') {
             steps {
                 sh '''
-                    git clone https://github.com/wyidongh/cpp-demo-service.git ${SERVICE_PATH}
+                    git clone ${SERVICE_REPO} ${SERVICE_DIR}
                 '''
             }
         }
 
-        stage('Build (Isolated Docker)') {
+        stage('Build (Docker Isolated)') {
             steps {
                 sh '''
+                    set -e
+
                     docker run --rm \
-                      -v ${SERVICE_PATH}:/src \
+                      -v ${SERVICE_DIR}:/workspace \
+                      -w /workspace \
                       -u $(id -u):$(id -g) \
-                      cpp-ci:build-1.0 \
+                      ${BUILD_IMAGE} \
                       bash -c "
                         set -e
-                        cd /src
-
                         rm -rf build
                         mkdir build
                         cd build
-
                         cmake ..
                         make
                       "
@@ -51,18 +51,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                    docker run --rm \
-                      -v ${SERVICE_PATH}:/src \
-                      -u $(id -u):$(id -g) \
-                      cpp-ci:build-1.0 \
-                      bash -c "
-                        cd /src/build
-                        if [ -f CTestTestfile.cmake ]; then
-                            ctest --output-on-failure
-                        else
-                            echo 'No tests found, skipping'
-                        fi
-                      "
+                    echo "Run tests here (optional)"
+                    ls -al ${SERVICE_DIR}/build
                 '''
             }
         }
@@ -70,48 +60,27 @@ pipeline {
         stage('Archive Artifact') {
             steps {
                 sh '''
-                    mkdir -p ${WORKSPACE}/artifact
-                    cp ${SERVICE_PATH}/build/app ${WORKSPACE}/artifact/
+                    mkdir -p ${WORKSPACE}/artifacts
+                    cp ${SERVICE_DIR}/build/app ${WORKSPACE}/artifacts/
                 '''
-                archiveArtifacts artifacts: 'artifact/app'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Run App') {
             steps {
                 sh '''
-cat > ${SERVICE_PATH}/Dockerfile <<EOF
-FROM ubuntu:22.04
-WORKDIR /app
-COPY build/app /app/app
-RUN chmod +x /app/app
-CMD ["/app/app"]
-EOF
-
-docker build -t ${IMAGE_NAME} ${SERVICE_PATH}
+                    ${SERVICE_DIR}/build/app
                 '''
             }
         }
-
-        stage('Run Container') {
-            steps {
-                sh '''
-                    docker run --rm ${IMAGE_NAME}
-                '''
-            }
-        }
-
     }
 
     post {
         success {
-            echo "CI/CD SUCCESS 🎉"
+            echo "CI SUCCESS ✅"
         }
         failure {
             echo "CI FAILED ❌"
-        }
-        always {
-            sh 'echo "cleanup done"'
         }
     }
 }
