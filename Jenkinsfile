@@ -41,24 +41,22 @@ pipeline {
         }
 
 
-	stage('Build (Dockerized)') {
+	stage('Build') {
 	    steps {
 		sh '''
-		set -e
+		    set -e
 
-		echo "BUILD START"
-
-		docker run --rm \
-		    -v $WORKSPACE/service:/workspace/service \
- 		    -v $WORKSPACE/build:/build \
-  		    -w /workspace \
-		    cpp-ci:build-1.0 \
-		    bash -c "
+		    docker run --rm \
+		      -v $WORKSPACE/service:/workspace \
+		      -v $WORKSPACE/build:/build \
+		      -w /workspace \
+		      cpp-ci:build-1.0 \
+		      bash -c "
 			set -e
-			ls -al service
-			cmake -S service -B /build	
+			ls -al
+			cmake -S . -B /build
 			cmake --build /build -j
-		    "
+		      "
 		'''
 	    }
 	}
