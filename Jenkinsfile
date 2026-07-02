@@ -26,27 +26,30 @@ pipeline {
             }
         }
 
-        stage('Build (Docker Isolated)') {
-            steps {
-                sh '''
-                    set -e
+	stage('Build (Docker Isolated)') {
+	    steps {
+		sh '''
+		    set -e
 
-                    docker run --rm \
-                      -v ${SERVICE_DIR}:/workspace \
-                      -w /workspace \
-                      -u $(id -u):$(id -g) \
-                      ${BUILD_IMAGE} \
-                      bash -c "
-                        set -e
-                        rm -rf build
-                        mkdir build
-                        cd build
-                        cmake ..
-                        make
-                      "
-                '''
-            }
-        }
+		    echo "UID=$(id -u)"
+		    echo "GID=$(id -g)"
+
+		    docker run --rm \
+		      -v ${SERVICE_DIR}:/workspace \
+		      -w /workspace \
+		      -u 0 \
+		      cpp-ci:build-1.0 \
+		      bash -c "
+			set -e
+			rm -rf build
+			mkdir -p build
+			cd build
+			cmake ..
+			make
+		      "
+		'''
+	    }
+	}
 
         stage('Test') {
             steps {
