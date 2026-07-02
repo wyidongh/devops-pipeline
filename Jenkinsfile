@@ -31,19 +31,27 @@ pipeline {
 		sh '''
 		    set -e
 
-		    echo "UID=$(id -u)"
-		    echo "GID=$(id -g)"
-
 		    docker run --rm \
 		      -v ${SERVICE_DIR}:/workspace \
-		      -w /workspace/cpp-demo-service \
+		      -w /workspace \
 		      cpp-ci:build-1.0 \
 		      bash -c "
 			set -e
+
+			echo '===== DEBUG FILE TREE ====='
+			find . -maxdepth 3
+
+			echo '===== LOCATE CMakeLists ====='
+			find . -name CMakeLists.txt
+
+			echo '===== BUILD ====='
+
+			# 自动进入正确目录
+			cd $(dirname $(find . -name CMakeLists.txt | head -n 1))
+
 			rm -rf build
-			mkdir -p build
-		      	cmake -S . -B build
-			cmake --build build	
+			cmake -S . -B build
+			cmake --build build
 		      "
 		'''
 	    }
