@@ -19,31 +19,24 @@ pipeline {
             }
         }
 
-        stage('Checkout') {
-            steps {
-                sh '''
-                set -e
-                git clone https://github.com/wyidongh/cpp-demo-service.git $SERVICE_DIR
-                ls -al $SERVICE_DIR
-                '''
-            }
-        }
+	stage('Checkout') {
+	    steps {
+		sh '''
+		set -e
+		rm -rf service build
+
+		git clone https://github.com/wyidongh/cpp-demo-service.git service
+		ls -al service
+		'''
+	    }
+	}
 
         stage('Detect Project Root') {
             steps {
                 script {
-                    def root = sh(
-                        script: "find ${SERVICE_DIR} -name CMakeLists.txt | head -n 1 | xargs dirname",
-                        returnStdout: true
-                    ).trim()
-
-                    if (!root) {
-                        error("CMakeLists.txt not found")
-                    }
-
-                    env.PROJECT_ROOT = root
-                    echo "Detected ROOT = ${env.PROJECT_ROOT}"
-                }
+                	env.PROJECT_ROOT = "${WORKSPACE}/service"
+			echo "PROJECT_ROOT = ${env.PROJECT_ROOT}"
+		}
             }
         }
 
@@ -56,17 +49,13 @@ pipeline {
 		echo "BUILD START"
 
 		docker run --rm \
-		    -v $SERVICE_DIR:/workspace \
-		    -v $BUILD_DIR:/build \
-		    -w /workspace \
+		    -v $WORKSPACE/service:/workspace \
+ 		    -v $WORKSPACE/build:/build \
+  		    -w /workspace \
 		    cpp-ci:build-1.0 \
 		    bash -c "
 			set -e
-
 			ls -al
-
-			cd cpp-demo-service
-
 			cmake -S . -B /build
 			cmake --build /build -j
 		    "
