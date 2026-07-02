@@ -2,15 +2,19 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_PATH = "/home/dong/devops/workspace/cpp-demo-service"
-        IMAGE_NAME = "cpp-app:${BUILD_NUMBER}"
+        SERVICE_NAME = "cpp-demo-service"
+        SERVICE_PATH = "${WORKSPACE}/service"
+        IMAGE_NAME = "cpp-demo:${BUILD_NUMBER}"
     }
 
     stages {
 
-        stage('Prepare') {
+        stage('Clean Workspace') {
             steps {
-                sh 'rm -rf ${SERVICE_PATH}'
+                sh '''
+                    echo "Cleaning workspace..."
+                    rm -rf ${SERVICE_PATH} || true
+                '''
             }
         }
 
@@ -22,17 +26,24 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build (Isolated Docker)') {
             steps {
                 sh '''
-                    docker run --rm -v ${SERVICE_PATH}:/src cpp-ci:build-1.0 bash -c "
+                    docker run --rm \
+                      -v ${SERVICE_PATH}:/src \
+                      -u $(id -u):$(id -g) \
+                      cpp-ci:build-1.0 \
+                      bash -c "
+                        set -e
                         cd /src
+
                         rm -rf build
                         mkdir build
                         cd build
+
                         cmake ..
                         make
-                    "
+                      "
                 '''
             }
         }
@@ -40,25 +51,44 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                    docker run --rm -v ${SERVICE_PATH}:/src cpp-ci:build-1.0 bash -c "
+                    docker run --rm \
+                      -v ${SERVICE_PATH}:/src \
+                      -u $(id -u):$(id -g) \
+                      cpp-ci:build-1.0 \
+                      bash -c "
                         cd /src/build
-                        ctest --output-on-failure || true
-                    "
+                        if [ -f CTestTestfile.cmake ]; then
+                            ctest --output-on-failure
+                        else
+                            echo 'No tests found, skipping'
+                        fi
+                      "
                 '''
             }
         }
 
-        stage('Package Docker Image') {
+        stage('Archive Artifact') {
             steps {
                 sh '''
-                    cat > ${SERVICE_PATH}/Dockerfile <<EOF
+                    mkdir -p ${WORKSPACE}/artifact
+                    cp ${SERVICE_PATH}/build/app ${WORKSPACE}/artifact/
+                '''
+                archiveArtifacts artifacts: 'artifact/app'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+cat > ${SERVICE_PATH}/Dockerfile <<EOF
 FROM ubuntu:22.04
 WORKDIR /app
-COPY build/app .
-CMD ["./app"]
+COPY build/app /app/app
+RUN chmod +x /app/app
+CMD ["/app/app"]
 EOF
 
-                    docker build -t ${IMAGE_NAME} ${SERVICE_PATH}
+docker build -t ${IMAGE_NAME} ${SERVICE_PATH}
                 '''
             }
         }
@@ -79,6 +109,9 @@ EOF
         }
         failure {
             echo "CI FAILED ❌"
+        }
+        always {
+            sh 'echo "cleanup done"'
         }
     }
 }
