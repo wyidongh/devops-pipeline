@@ -26,22 +26,30 @@ pipeline {
             }
         }
 
-        stage('Build (Container Isolated)') {
-            steps {
-                sh '''
-                    docker run --rm \
-                      -v ${SERVICE_DIR}:/src \
-                      -w /src \
-                      ${IMAGE} \
-                      bash -c "
-                        set -e
-                        rm -rf build
-                        cmake -S . -B build
-                        cmake --build build -j
-                      "
-                '''
-            }
-        }
+	stage('Build (Container Isolated)') {
+	    steps {
+		sh '''
+		    docker run --rm \
+		      -v ${SERVICE_DIR}:/src \
+		      -w /src \
+		      cpp-ci:build-1.0 \
+		      bash -c "
+			set -e
+
+			echo '===== FIND PROJECT ROOT ====='
+			ROOT=$(dirname $(find /src -name CMakeLists.txt | head -n 1))
+
+			echo 'Project root:' $ROOT
+
+			cd $ROOT
+
+			rm -rf build
+			cmake -S . -B build
+			cmake --build build -j
+		      "
+		'''
+	    }
+	}
 
         stage('Test') {
             steps {
