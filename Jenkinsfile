@@ -5,16 +5,31 @@ pipeline {
 
         stage('Checkout Service Repo') {
             steps {
-                echo "Cloning cpp-demo-service..."
-                git branch: 'main',
-                    url: 'https://github.com/wyidongh/cpp-demo-service.git'
+                git url: 'https://github.com/wyidongh/cpp-demo-service.git', branch: 'main'
             }
         }
 
-        stage('Verify Workspace') {
+        stage('Build in Docker CI Image') {
             steps {
-                sh 'ls -al'
-                sh 'echo "BUILD SUCCESS - Checkout Only"'
+                sh '''
+                docker run --rm \
+                  -v $WORKSPACE:/workspace \
+                  cpp-ci:build-1.0 \
+                  bash -c "
+                    cd /workspace &&
+                    rm -rf build &&
+                    mkdir build &&
+                    cd build &&
+                    cmake .. &&
+                    make
+                  "
+                '''
+            }
+        }
+
+        stage('Run App') {
+            steps {
+                sh './build/app'
             }
         }
     }
