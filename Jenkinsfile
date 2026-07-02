@@ -48,10 +48,15 @@ pipeline {
 		docker run --rm \
 		  -v $WORKSPACE/service:/workspace/service \
 		  -v $WORKSPACE/build:/build \
-		  -w /workspace/service \
-		  cpp-ci:build-1.0 bash -c "
+		  -w /workspace/service cpp-ci:build-1.0 bash -c "
 		    set -e
 		    ls -al
+
+		    cd cpp-demo-service
+
+		    echo '=== BUILD IN:' $(pwd)
+		    ls -al
+
 		    cmake -S . -B /build
 		    cmake --build /build -j
 		  "
