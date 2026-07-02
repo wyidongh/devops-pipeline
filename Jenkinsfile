@@ -36,12 +36,17 @@ pipeline {
 		      bash -c "
 			set -e
 
-			echo '===== FIND PROJECT ROOT ====='
-			ROOT=$(dirname $(find /src -name CMakeLists.txt | head -n 1))
+			echo '===== PROJECT STRUCTURE ====='
+			find . -maxdepth 2 -name CMakeLists.txt
 
-			echo 'Project root:' $ROOT
+			echo '===== BUILD START ====='
 
-			cd $ROOT
+			# 自动定位 CMakeLists.txt 所在目录
+			ROOT_DIR=$(dirname $(find . -name CMakeLists.txt | head -n 1))
+
+			echo 'ROOT:' $ROOT_DIR
+
+			cd $ROOT_DIR
 
 			rm -rf build
 			cmake -S . -B build
