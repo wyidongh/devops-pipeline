@@ -32,18 +32,21 @@ pipeline {
             }
         }
 
-        stage('Detect Root') {
-            steps {
-                script {
-                    env.PROJECT_ROOT = sh(
-                        script: "dirname $(find ${WORK_DIR} -name CMakeLists.txt | head -n 1)",
-                        returnStdout: true
-                    ).trim()
+	stage('Detect Root') {
+	    steps {
+		script {
+		    env.PROJECT_ROOT = sh(
+			script: '''
+			    find service -name CMakeLists.txt | head -n 1 | xargs dirname
+			''',
+			returnStdout: true
+		    ).trim()
 
-                    echo "PROJECT_ROOT = ${env.PROJECT_ROOT}"
-                }
-            }
-        }
+		    echo "PROJECT_ROOT = ${PROJECT_ROOT}"
+		}
+	    }
+	}
+
 
         stage('Build') {
             steps {
