@@ -1,51 +1,68 @@
 pipeline {
     agent any
 
+    environment {
+        SERVICE_DIR = "/workspace/cpp-demo-service"
+    }
+
     stages {
 
-	stage('Checkout Service Repo') {
-	    steps {
-		dir('service') {
-		    git branch: 'main',
-			url: 'https://github.com/wyidongh/cpp-demo-service.git'
-		}
-	    }
-	}
+        stage('Prepare Workspace') {
+            steps {
+                sh '''
+                    rm -rf ${SERVICE_DIR}
+                    mkdir -p /workspace
+                '''
+            }
+        }
 
+        stage('Clone Service') {
+            steps {
+                sh '''
+                    git clone \
+                    https://github.com/wyidongh/cpp-demo-service.git \
+                    ${SERVICE_DIR}
+                '''
+            }
+        }
 
-	stage('Debug Workspace') {
-	    steps {
-		sh '''
-		echo "===== Jenkins ====="
-		pwd
-		ls -al
-		ls -al service
+        stage('Verify') {
+            steps {
+                sh '''
+                    pwd
 
-		docker run --rm \
-		  -v $WORKSPACE/service:/workspace \
-		  cpp-ci:build-1.0 \
-		  bash -c '
-		    echo "===== Docker ====="
-		    pwd
-		    ls -al /workspace
-		    find /workspace -maxdepth 2 -type f
-		  '
-		'''
-	    }
-	}
-	
-	stage('Run App') {
-	    steps {
-		sh '''
-		docker run --rm \
-		  -v $WORKSPACE/service:/workspace \
-		  cpp-ci:build-1.0 \
-		  bash -c "
-		    ./build/app
-		  "
-		'''
-	    }
-	}
+                    ls -al /workspace
 
+                    ls -al ${SERVICE_DIR}
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh '''
+                    docker run --rm \
+                      -v ${SERVICE_DIR}:/workspace \
+                      cpp-ci:build-1.0 \
+                      bash -c "
+                        mkdir build &&
+                        cd build &&
+                        cmake .. &&
+                        make
+                      "
+                '''
+            }
+        }
+
+        stage('Run') {
+            steps {
+                sh '''
+                    docker run --rm \
+                      -v ${SERVICE_DIR}:/workspace \
+                      cpp-ci:build-1.0 \
+                      bash -c "./build/app"
+                '''
+            }
+        }
     }
 }
