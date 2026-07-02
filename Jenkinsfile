@@ -12,18 +12,39 @@ pipeline {
 	    }
 	}
 
-	stage('Build') {
+#	stage('Build') {
+#	    steps {
+#		sh '''
+#		docker run --rm \
+#		  -v $WORKSPACE/service:/workspace \
+#		  cpp-ci:build-1.0 \
+#		  bash -c "
+#		    mkdir -p build &&
+#		    cd build &&
+#		    cmake .. &&
+#		    make
+#		  "
+#		'''
+#	    }
+#	}
+
+	stage('Debug Workspace') {
 	    steps {
 		sh '''
+		echo "===== Jenkins ====="
+		pwd
+		ls -al
+		ls -al service
+
 		docker run --rm \
 		  -v $WORKSPACE/service:/workspace \
 		  cpp-ci:build-1.0 \
-		  bash -c "
-		    mkdir -p build &&
-		    cd build &&
-		    cmake .. &&
-		    make
-		  "
+		  bash -c '
+		    echo "===== Docker ====="
+		    pwd
+		    ls -al /workspace
+		    find /workspace -maxdepth 2 -type f
+		  '
 		'''
 	    }
 	}
