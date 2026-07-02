@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_NAME = "cpp-demo-service"
         REPO_URL = "https://github.com/wyidongh/cpp-demo-service.git"
         WORK_DIR = "${WORKSPACE}/service"
         BUILD_DIR = "${WORKSPACE}/build"
@@ -15,14 +14,11 @@ pipeline {
 
     stages {
 
-        stage('Clean Workspace') {
+        stage('Clean') {
             steps {
                 sh '''
-                    echo "Cleaning workspace..."
-                    rm -rf ${WORK_DIR}
-                    rm -rf ${BUILD_DIR}
-                    mkdir -p ${WORK_DIR}
-                    mkdir -p ${BUILD_DIR}
+                    rm -rf ${WORK_DIR} ${BUILD_DIR}
+                    mkdir -p ${WORK_DIR} ${BUILD_DIR}
                 '''
             }
         }
@@ -30,33 +26,31 @@ pipeline {
         stage('Checkout') {
             steps {
                 sh '''
-                    echo "Cloning repo..."
                     git clone ${REPO_URL} ${WORK_DIR}
                     ls -al ${WORK_DIR}
                 '''
             }
         }
 
-        stage('Detect Project Root') {
+        stage('Detect Root') {
             steps {
                 script {
                     env.PROJECT_ROOT = sh(
-                        script: "find ${WORK_DIR} -name CMakeLists.txt | head -n 1 | xargs dirname",
+                        script: "dirname $(find ${WORK_DIR} -name CMakeLists.txt | head -n 1)",
                         returnStdout: true
                     ).trim()
 
-                    echo "Detected project root: ${env.PROJECT_ROOT}"
+                    echo "PROJECT_ROOT = ${env.PROJECT_ROOT}"
                 }
             }
         }
 
-        stage('Build (Containerized)') {
+        stage('Build') {
             steps {
                 sh '''
                     set -e
 
-                    echo "Building in Docker..."
-                    echo "Project root: ${PROJECT_ROOT}"
+                    echo "Building project..."
 
                     docker run --rm \
                         -v ${WORK_DIR}:/workspace \
@@ -72,26 +66,18 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                sh '''
-                    echo "Running tests..."
-                    ls -al ${BUILD_DIR}
-                '''
-            }
-        }
-
-        stage('Run App') {
+        stage('Run') {
             steps {
                 sh '''
                     docker run --rm \
-                        -v ${BUILD_DIR}:/app \
+                        -v ${BUILD_DIR}:/build \
                         cpp-ci:build-1.0 \
                         bash -c "
-                            if [ -f /app/app ]; then
-                                /app/app
+                            if [ -f /build/app ]; then
+                                /build/app
                             else
-                                echo 'No binary found'
+                                echo 'binary not found'
+                                ls -al /build
                                 exit 1
                             fi
                         "
@@ -102,7 +88,6 @@ pipeline {
         stage('Archive') {
             steps {
                 sh '''
-                    echo "Archiving artifacts..."
                     mkdir -p ${WORKSPACE}/artifacts
                     cp -f ${BUILD_DIR}/app ${WORKSPACE}/artifacts/ || true
                 '''
