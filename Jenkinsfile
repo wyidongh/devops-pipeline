@@ -114,17 +114,22 @@ EOF
             }
         }
 
-        stage('Test (ASan)') {
-            steps {
-                sh '''
-                docker run --rm \
-                  --cap-add=SYS_PTRACE \
-                  --security-opt seccomp=unconfined \
-                  ${IMAGE_TAG} \
-                  ctest --test-dir /build --output-on-failure
-                '''
-            }
-        }
+	stage('Test (ASan)') {
+	    steps {
+		sh '''
+		docker run --rm \
+		  --cap-add=SYS_PTRACE \
+		  --security-opt seccomp=unconfined \
+		  ${IMAGE_TAG} \
+		  bash -c "
+		    set -e
+		    ctest --test-dir /build --output-on-failure
+		    echo '--- Running app with ASan ---'
+		    /build/app || true
+		  "
+		'''
+	    }
+	}
 
         stage('Archive') {
             steps {
