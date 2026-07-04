@@ -68,7 +68,7 @@ EOF
         stage('Build') {
             steps {
                 script {
-                    writeFile file: 'Dockerfile.build', text: """FROM cpp-ci:build-1.0
+                    writeFile file: 'Dockerfile.build', text: """FROM cpp-ci:build-2.0
 COPY service/ /workspace/
 WORKDIR /workspace
 RUN cmake -S . -B /build && cmake --build /build -j
