@@ -31,6 +31,36 @@ pipeline {
             }
         }
 
+	stage('Format Check') {
+	    steps {
+		sh '''
+		docker run --rm \
+		  -v $WORKSPACE/service:/workspace \
+		  -w /workspace \
+		  cpp-ci:build-2.0 \
+		  clang-format --dry-run --Werror \
+		  main.cpp tests/test_main.cpp
+		'''
+	    }
+	}
+
+	stage('Static Analysis') {
+	    steps {
+		sh '''
+		docker run --rm \
+		  -v $WORKSPACE/service:/workspace \
+		  -w /workspace \
+		  cpp-ci:build-2.0 \
+		  cppcheck \
+		    --enable=all \
+		    --inconclusive \
+		    --std=c++17 \
+		    --language=c++ \
+		    . 
+		'''
+	    }
+	}
+
         stage('Build') {
             steps {
                 script {
