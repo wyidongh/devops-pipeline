@@ -166,22 +166,29 @@ EOF
 	    }
 	}
 
-        stage('Run') {
+        stage('Resolve Deploy Config') {
+            // ... 已有代码 ...
+        }
+
+        stage('Deploy') {
             steps {
                 sh """
+                    set -e
+                    docker rm -f cpp-demo-${params.ENV} || true
                     docker run -d --rm \
-                        --name cpp-demo-run-${BUILD_NUMBER} \
-                        ${IMAGE_TAG} \
-                        sh -c 'echo "Container ready with build artifacts"; sleep 3600'
+                        --name cpp-demo-${params.ENV} \
+                        -p ${env.DEPLOY_PORT}:8080 \
+                        localhost:5000/cpp-demo:${BUILD_NUMBER} \
+                        sh -c 'echo "Running in ${params.ENV} on port ${env.DEPLOY_PORT}"; sleep 3600'
+                    echo "Deployed cpp-demo-${params.ENV} on port ${env.DEPLOY_PORT}"
                 """
             }
         }
-    }
+
 
     post {
         always {
             sh '''
-                docker rm -f cpp-demo-run-${BUILD_NUMBER} 2>/dev/null || true
                 docker rm -f cpp-demo-coverage-extract-${BUILD_NUMBER} 2>/dev/null || true
                 docker rmi -f ${IMAGE_TAG} 2>/dev/null || true
                 docker rmi -f cpp-demo-format:${BUILD_NUMBER} 2>/dev/null || true
