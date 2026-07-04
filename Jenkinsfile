@@ -9,11 +9,15 @@ pipeline {
         WORKSPACE_DIR = "${WORKSPACE}"
         SERVICE_DIR   = "${WORKSPACE}/service"
         BUILD_DIR     = "${WORKSPACE}/build"
-        IMAGE_TAG     = "cpp-demo-build:${BUILD_NUMBER}"
-	IMAGE_NAME = "localhost:5000/cpp-demo"
-	ENV_PORT_MAP = "dev:8081,staging:8082,prod:8083"	
+        
+        IMAGE_NAME = "localhost:5000/cpp-demo"
+	
+	VERSION = "1.0.${BUILD_NUMBER}"
+	
+	IMAGE_TAG = "${IMAGE_NAME}:${VERSION}"
+        
+	ENV_PORT_MAP = "dev:8081,staging:8082,prod:8083"
     }
-
     stages {
         stage('Clean Workspace') {
             steps {
@@ -146,11 +150,12 @@ EOF
 	stage('Push Image') {
 	    steps {
 		sh """
-		    docker tag ${IMAGE_TAG} localhost:5000/cpp-demo:${BUILD_NUMBER}
-		    docker push localhost:5000/cpp-demo:${BUILD_NUMBER}
-		"""
+		docker tag ${IMAGE_TAG} ${IMAGE_NAME}:${VERSION}
+		docker push ${IMAGE_NAME}:${VERSION}
+	        """
 	    }
 	}
+
 	stage('Resolve Deploy Config') {
 	    steps {
 		script {
@@ -175,7 +180,7 @@ EOF
                     docker run -d --rm \
                         --name cpp-demo-${params.ENV} \
                         -p ${env.DEPLOY_PORT}:8080 \
-                        localhost:5000/cpp-demo:${BUILD_NUMBER} \
+                        ${IMAGE_NAME}:${VERSION} \
                         sh -c 'echo "Running in ${params.ENV} on port ${env.DEPLOY_PORT}"; sleep 3600'
                     echo "Deployed cpp-demo-${params.ENV} on port ${env.DEPLOY_PORT}"
                 """
