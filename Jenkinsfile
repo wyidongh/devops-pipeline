@@ -145,6 +145,32 @@ EOF
 	    }
 	}
 
+	stage('Integration Test') {
+	    steps {
+		sh """
+		echo "Running Integration Test..."
+
+		docker run -d --rm \
+		  --name cpp-it-${BUILD_NUMBER} \
+		  ${IMAGE_TAG} \
+		  sleep 3600
+
+		sleep 2
+
+		echo "Step 1: Check binary execution"
+		docker exec cpp-it-${BUILD_NUMBER} /build/app | tee output.txt
+
+		echo "Step 2: Validate output"
+
+		grep -q "Hello CI/CD World" output.txt
+
+		echo "Integration Test PASSED"
+
+		docker rm -f cpp-it-${BUILD_NUMBER}
+		"""
+	    }
+	}
+
 	stage('Test (ASan)') {
 	    steps {
 		sh '''
