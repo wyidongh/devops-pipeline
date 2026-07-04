@@ -71,7 +71,11 @@ EOF
                     writeFile file: 'Dockerfile.build', text: """FROM cpp-ci:build-2.0
 COPY service/ /workspace/
 WORKDIR /workspace
-RUN cmake -S . -B /build && cmake --build /build -j
+RUN cmake -S . -B /build \
+	-DCMAKE_BUILD_TYPE=Debug \
+    	-DCMAKE_CXX_FLAGS="--coverage" \
+    	-DCMAKE_C_FLAGS="--coverage" \
+ && cmake --build /build -j
 """
                     sh "docker build -f Dockerfile.build -t ${IMAGE_TAG} ."
 
@@ -85,6 +89,31 @@ RUN cmake -S . -B /build && cmake --build /build -j
                 }
             }
         }
+
+        stage('Coverage') {
+            steps {
+                script {
+                    writeFile file: 'Dockerfile.coverage', text: """FROM cpp-ci:build-2.0
+COPY service/ /workspace/
+WORKDIR /workspace
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS='--coverage' -DCMAKE_C_FLAGS='--coverage' && \\\\
+    cmake --build build && \\\\
+    ctest --test-dir build && \\\\
+    gcovr -r . --html --html-details -o coverage.html
+"""
+                    sh "docker build -f Dockerfile.coverage -t cpp-demo-coverage:${BUILD_NUMBER} ."
+
+                    sh """
+                        set -e
+                        docker create --name cpp-demo-coverage-extract-${BUILD_NUMBER} cpp-demo-coverage:${BUILD_NUMBER}
+                        docker cp cpp-demo-coverage-extract-${BUILD_NUMBER}:/workspace/coverage.html ${WORKSPACE}/coverage.html
+                        docker rm cpp-demo-coverage-extract-${BUILD_NUMBER}
+                    """
+		    archiveArtifacts artifacts: 'coverage.html', fingerprint: true
+                }
+            }
+        }
+
 
         stage('Test') {
             steps {
@@ -117,8 +146,9 @@ RUN cmake -S . -B /build && cmake --build /build -j
                 docker rmi -f ${IMAGE_TAG} 2>/dev/null || true
                 docker rmi -f cpp-demo-format:${BUILD_NUMBER} 2>/dev/null || true
                 docker rmi -f cpp-demo-analysis:${BUILD_NUMBER} 2>/dev/null || true
-                rm -f Dockerfile.build Dockerfile.format Dockerfile.analysis
-            '''
+        	docker rmi -f cpp-demo-coverage:${BUILD_NUMBER} 2>/dev/null || true
+                rm -f Dockerfile.build Dockerfile.format Dockerfile.analysis Dockerfile.coverage    
+	'''
         }
         success {
             echo "CI SUCCESS ✅"
