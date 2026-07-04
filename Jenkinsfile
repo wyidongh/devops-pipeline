@@ -166,9 +166,6 @@ EOF
 	    }
 	}
 
-        stage('Resolve Deploy Config') {
-            // ... 已有代码 ...
-        }
 
         stage('Deploy') {
             steps {
@@ -184,7 +181,7 @@ EOF
                 """
             }
         }
-
+    }
 
     post {
         always {
