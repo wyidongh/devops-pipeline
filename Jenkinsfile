@@ -176,6 +176,7 @@ EOF
             steps {
                 sh """
                     set -e
+		    mkdir -p deploy-records
                     docker rm -f cpp-demo-${params.ENV} || true
                     docker run -d --rm \
                         --name cpp-demo-${params.ENV} \
@@ -183,6 +184,13 @@ EOF
                         ${IMAGE_NAME}:${VERSION} \
                         sh -c 'echo "Running in ${params.ENV} on port ${env.DEPLOY_PORT}"; sleep 3600'
                     echo "Deployed cpp-demo-${params.ENV} on port ${env.DEPLOY_PORT}"
+		    echo '{
+		        "env": "${params.ENV}",
+		        "version": "${VERSION}",
+		        "image": "localhost:5000/cpp-demo:${BUILD_NUMBER}",
+		        "port": "${env.DEPLOY_PORT}",
+		        "build": "${BUILD_NUMBER}"
+		    }' > deploy-records/${params.ENV}.json
                 """
             }
         }
