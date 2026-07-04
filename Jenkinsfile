@@ -140,12 +140,11 @@ EOF
 	stage('Push Image') {
 	    steps {
 		sh """
-		    docker tag ${IMAGE_TAG} host.docker.internal:5000/cpp-demo:${BUILD_NUMBER}
-		    docker push host.docker.internal:5000/cpp-demo:${BUILD_NUMBER}
+		    docker tag ${IMAGE_TAG} localhost:5000/cpp-demo:${BUILD_NUMBER}
+		    docker push localhost:5000/cpp-demo:${BUILD_NUMBER}
 		"""
 	    }
 	}
-
 
         stage('Run') {
             steps {
