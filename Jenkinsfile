@@ -1,4 +1,8 @@
 pipeline {
+
+    parameters {
+    choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Deploy Environment')
+}
     agent any
 
     environment {
