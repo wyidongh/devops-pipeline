@@ -68,24 +68,25 @@ EOF
         stage('Build') {
             steps {
                 script {
-                    writeFile file: 'Dockerfile.build', text: """FROM cpp-ci:build-2.0
+                    sh '''
+                        set -e
+                        cat > Dockerfile.build << 'EOF'
+FROM cpp-ci:build-2.0
 COPY service/ /workspace/
 WORKDIR /workspace
 RUN cmake -S . -B /build \
-	-DCMAKE_BUILD_TYPE=Debug \
-    	-DCMAKE_CXX_FLAGS="--coverage" \
-    	-DCMAKE_C_FLAGS="--coverage" \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_FLAGS="-g -O1 --coverage -fsanitize=address,undefined -fno-omit-frame-pointer" \
+    -DCMAKE_C_FLAGS="-g -O1 --coverage -fsanitize=address,undefined -fno-omit-frame-pointer" \
  && cmake --build /build -j
-"""
-                    sh "docker build -f Dockerfile.build -t ${IMAGE_TAG} ."
-
-                    sh """
-                        set -e
+EOF
+                        docker build -f Dockerfile.build -t ${IMAGE_TAG} .
+                        
                         docker create --name cpp-demo-extract-${BUILD_NUMBER} ${IMAGE_TAG}
                         rm -rf ${BUILD_DIR}
                         docker cp cpp-demo-extract-${BUILD_NUMBER}:/build ${BUILD_DIR}
                         docker rm cpp-demo-extract-${BUILD_NUMBER}
-                    """
+                    '''
                 }
             }
         }
@@ -113,9 +114,15 @@ EOF
             }
         }
 
-        stage('Test') {
+        stage('Test (ASan)') {
             steps {
-                sh "docker run --rm ${IMAGE_TAG} ctest --test-dir /build || true"
+                sh '''
+                docker run --rm \
+                  --cap-add=SYS_PTRACE \
+                  --security-opt seccomp=unconfined \
+                  ${IMAGE_TAG} \
+                  ctest --test-dir /build --output-on-failure
+                '''
             }
         }
 
@@ -141,12 +148,13 @@ EOF
         always {
             sh '''
                 docker rm -f cpp-demo-run-${BUILD_NUMBER} 2>/dev/null || true
+                docker rm -f cpp-demo-coverage-extract-${BUILD_NUMBER} 2>/dev/null || true
                 docker rmi -f ${IMAGE_TAG} 2>/dev/null || true
                 docker rmi -f cpp-demo-format:${BUILD_NUMBER} 2>/dev/null || true
                 docker rmi -f cpp-demo-analysis:${BUILD_NUMBER} 2>/dev/null || true
-        	docker rmi -f cpp-demo-coverage:${BUILD_NUMBER} 2>/dev/null || true
-                rm -f Dockerfile.build Dockerfile.format Dockerfile.analysis Dockerfile.coverage    
-	'''
+                docker rmi -f cpp-demo-coverage:${BUILD_NUMBER} 2>/dev/null || true
+                rm -f Dockerfile.build Dockerfile.format Dockerfile.analysis Dockerfile.coverage
+            '''
         }
         success {
             echo "CI SUCCESS ✅"
