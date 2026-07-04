@@ -92,28 +92,26 @@ RUN cmake -S . -B /build \
 
         stage('Coverage') {
             steps {
-                script {
-                    writeFile file: 'Dockerfile.coverage', text: """FROM cpp-ci:build-2.0
+                sh '''
+                set -e
+                
+                cat > Dockerfile.coverage << 'EOF'
+FROM cpp-ci:build-2.0
 COPY service/ /workspace/
 WORKDIR /workspace
-RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS='--coverage' -DCMAKE_C_FLAGS='--coverage' && \\\\
-    cmake --build build && \\\\
-    ctest --test-dir build && \\\\
-    gcovr -r . --html --html-details -o coverage.html
-"""
-                    sh "docker build -f Dockerfile.coverage -t cpp-demo-coverage:${BUILD_NUMBER} ."
-
-                    sh """
-                        set -e
-                        docker create --name cpp-demo-coverage-extract-${BUILD_NUMBER} cpp-demo-coverage:${BUILD_NUMBER}
-                        docker cp cpp-demo-coverage-extract-${BUILD_NUMBER}:/workspace/coverage.html ${WORKSPACE}/coverage.html
-                        docker rm cpp-demo-coverage-extract-${BUILD_NUMBER}
-                    """
-		    archiveArtifacts artifacts: 'coverage.html', fingerprint: true
-                }
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS='--coverage' -DCMAKE_C_FLAGS='--coverage' && cmake --build build && ctest --test-dir build && gcovr -r . --html --html-details -o coverage.html
+EOF
+                
+                docker build -f Dockerfile.coverage -t cpp-demo-coverage:${BUILD_NUMBER} .
+                
+                docker create --name cpp-demo-coverage-extract-${BUILD_NUMBER} cpp-demo-coverage:${BUILD_NUMBER}
+                docker cp cpp-demo-coverage-extract-${BUILD_NUMBER}:/workspace/coverage.html ${WORKSPACE}/coverage.html
+                docker rm cpp-demo-coverage-extract-${BUILD_NUMBER}
+                '''
+                
+                archiveArtifacts artifacts: 'coverage.html', fingerprint: true
             }
         }
-
 
         stage('Test') {
             steps {
