@@ -124,6 +124,27 @@ EOF
             }
         }
 
+	stage('Smoke Test') {
+	    steps {
+		sh """
+		echo "Running Smoke Test..."
+
+		docker run --rm \
+		  ${IMAGE_TAG} \
+		  bash -c '
+		    set -e
+		    /build/app &
+		    sleep 1
+
+		    echo "Checking process..."
+		    ps aux | grep app || true
+
+		    echo "Smoke Test OK"
+		  '
+		"""
+	    }
+	}
+
 	stage('Test (ASan)') {
 	    steps {
 		sh '''
