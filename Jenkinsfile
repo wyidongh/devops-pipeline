@@ -125,7 +125,7 @@ EOF
 		    set -e
 		    ctest --test-dir /build --output-on-failure
 		    echo '--- Running app with ASan ---'
-		    /build/app || true
+		    /build/app
 		  "
 		'''
 	    }
