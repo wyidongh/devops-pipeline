@@ -10,6 +10,8 @@ pipeline {
         SERVICE_DIR   = "${WORKSPACE}/service"
         BUILD_DIR     = "${WORKSPACE}/build"
         IMAGE_TAG     = "cpp-demo-build:${BUILD_NUMBER}"
+	IMAGE_NAME = "localhost:5000/cpp-demo"
+	ENV_PORT_MAP = "dev:8081,staging:8082,prod:8083"	
     }
 
     stages {
@@ -147,6 +149,20 @@ EOF
 		    docker tag ${IMAGE_TAG} localhost:5000/cpp-demo:${BUILD_NUMBER}
 		    docker push localhost:5000/cpp-demo:${BUILD_NUMBER}
 		"""
+	    }
+	}
+	stage('Resolve Deploy Config') {
+	    steps {
+		script {
+		    def map = [:]
+		    env.ENV_PORT_MAP.split(',').each {
+			def parts = it.split(':')
+			map[parts[0]] = parts[1]
+		    }
+
+		    env.DEPLOY_PORT = map[params.ENV]
+		    echo "Deploy ENV = ${params.ENV}, PORT = ${env.DEPLOY_PORT}"
+		}
 	    }
 	}
 
