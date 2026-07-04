@@ -24,57 +24,57 @@ pipeline {
                 sh '''
                 set -e
                 rm -rf service build
-
                 git clone https://github.com/wyidongh/cpp-demo-service.git service
                 ls -al service
                 '''
             }
         }
 
-	stage('Format Check') {
-	    steps {
-		sh '''
-		docker run --rm \
-		  -v $WORKSPACE/service:/workspace \
-		  -w /workspace \
-		  cpp-ci:build-2.0 \
-		  clang-format --dry-run --Werror \
-		  main.cpp tests/test_main.cpp
-		'''
-	    }
-	}
+        stage('Format Check') {
+            steps {
+                sh '''
+                set -e
+                cat > Dockerfile.format << 'EOF'
+FROM cpp-ci:build-2.0
+COPY service/ /workspace/
+WORKDIR /workspace
+RUN clang-format --dry-run --Werror main.cpp tests/test_main.cpp
+EOF
+                docker build -f Dockerfile.format -t cpp-demo-format:${BUILD_NUMBER} .
+                '''
+            }
+        }
 
-	stage('Static Analysis') {
-	    steps {
-		sh '''
-		docker run --rm \
-		  -v $WORKSPACE/service:/workspace \
-		  -w /workspace \
-		  cpp-ci:build-2.0 \
-		  cppcheck \
-		    --enable=all \
-		    --inconclusive \
-		    --std=c++17 \
-		    --language=c++ \
-		    . 
-		'''
-	    }
-	}
+        stage('Static Analysis') {
+            steps {
+                sh '''
+                set -e
+                cat > Dockerfile.analysis << 'EOF'
+FROM cpp-ci:build-2.0
+COPY service/ /workspace/
+WORKDIR /workspace
+RUN cppcheck \
+    --enable=all \
+    --inconclusive \
+    --std=c++17 \
+    --language=c++ \
+    .
+EOF
+                docker build -f Dockerfile.analysis -t cpp-demo-analysis:${BUILD_NUMBER} .
+                '''
+            }
+        }
 
         stage('Build') {
             steps {
                 script {
-                    // 生成临时 Dockerfile：把 service/ 目录 COPY 进镜像
-                    // 注意 service/ 末尾的斜杠，表示复制目录"内容"到 /workspace/
                     writeFile file: 'Dockerfile.build', text: """FROM cpp-ci:build-1.0
 COPY service/ /workspace/
 WORKDIR /workspace
 RUN cmake -S . -B /build && cmake --build /build -j
 """
-                    // 构建镜像（build context 是当前 workspace，包含 service/ 目录）
                     sh "docker build -f Dockerfile.build -t ${IMAGE_TAG} ."
 
-                    // 创建临时容器（不启动），把 /build 提取到 Jenkins 工作空间
                     sh """
                         set -e
                         docker create --name cpp-demo-extract-${BUILD_NUMBER} ${IMAGE_TAG}
@@ -88,7 +88,6 @@ RUN cmake -S . -B /build && cmake --build /build -j
 
         stage('Test') {
             steps {
-                // 测试也在构建镜像里跑，无需 -v 挂载
                 sh "docker run --rm ${IMAGE_TAG} ctest --test-dir /build || true"
             }
         }
@@ -101,7 +100,6 @@ RUN cmake -S . -B /build && cmake --build /build -j
 
         stage('Run') {
             steps {
-                // 运行构建镜像即可，构建产物已在镜像内部，无需 -v 挂载
                 sh """
                     docker run -d --rm \
                         --name cpp-demo-run-${BUILD_NUMBER} \
@@ -115,9 +113,11 @@ RUN cmake -S . -B /build && cmake --build /build -j
     post {
         always {
             sh '''
-                docker rm -f cpp-demo-run-${BUILD_NUMBER} || true
-                docker rmi -f ${IMAGE_TAG} || true
-                rm -f Dockerfile.build
+                docker rm -f cpp-demo-run-${BUILD_NUMBER} 2>/dev/null || true
+                docker rmi -f ${IMAGE_TAG} 2>/dev/null || true
+                docker rmi -f cpp-demo-format:${BUILD_NUMBER} 2>/dev/null || true
+                docker rmi -f cpp-demo-analysis:${BUILD_NUMBER} 2>/dev/null || true
+                rm -f Dockerfile.build Dockerfile.format Dockerfile.analysis
             '''
         }
         success {
